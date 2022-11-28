@@ -1,0 +1,648 @@
+PARSER_BEGIN(Karloff)
+import java.io.*;
+import java.util.ArrayList;
+
+
+class ArvoreKarloff{
+
+  Main main;
+  ArrayList <Func> funcoes;
+  ArvoreKarloff(Main main, ArrayList<Func> funcoes)
+  {
+    this.main = main;
+    this.funcoes = funcoes;
+  }
+}
+
+class Main{
+
+  ArrayList <VarDecl> vardecl;
+  ArrayList <Comandos> comandos;
+  Main(ArrayList <VarDecl> vardecl, ArrayList <Comandos> comandos){
+    this.vardecl = vardecl;
+    this.comandos = comandos;
+  }
+}
+
+class VarDecl{
+
+  String tipo;
+  String token_id;
+  VarDecl(String tipo, String token_id){
+    this.tipo = tipo;
+    this.token_id = token_id;
+  }
+}
+
+class Comandos{}
+
+class SeqComandos{
+
+  ArrayList <Comandos> comandos;
+  SeqComandos(ArrayList <Comandos> comandos){
+    this.comandos = comandos;
+  }
+}
+
+class CmdAttr extends Comandos{
+
+  String id;
+  Exp exp;
+  CmdAttr(String id,Exp exp){
+    this.id = id;
+    this.exp = exp;
+  }
+}
+
+class CmdListaExp extends Comandos{
+
+  String id;
+  ArrayList <Exp> exp;
+  CmdListaExp(String id, ArrayList<Exp> exp){
+    this.id = id;
+    this.exp = exp;
+  }
+}
+
+class CmdCondicional extends Comandos{
+  Exp exp;
+  ArrayList <Comandos> comandos;
+  CmdCondicional(Exp exp,ArrayList <Comandos> comandos){
+    this.exp = exp;
+    this.comandos = comandos;
+  }
+}
+
+class CmdWhile extends Comandos{
+  Exp exp;
+  ArrayList <Comandos> comandos;
+  CmdWhile(Exp exp,ArrayList <Comandos>comandos){
+
+    this.exp = exp;
+    this.comandos = comandos;
+  }
+}
+class CmdRepeat extends Comandos{
+
+  Exp exp;
+  ArrayList <Comandos> comandos;
+  CmdRepeat(Exp exp,ArrayList <Comandos>comandos){
+    this.exp =  exp;
+    this.comandos = comandos;
+  }
+}
+
+class CmdReturn extends Comandos{
+  Exp exp;
+  CmdReturn(Exp exp){
+    this.exp = exp;
+  }
+}
+
+class CmdOutput extends Comandos{
+
+  Exp exp;
+  CmdOutput(Exp exp){
+    this.exp = exp;
+  }
+}
+
+class Exp{}
+
+
+class ListaExp{
+
+  Exp exp;
+  ListaExp(Exp exp){
+    this.exp = exp;
+  }
+}
+
+class ExpOperador extends Exp{
+
+  Exp arg1;
+  Exp arg2;
+  String operador;
+  ExpOperador(Exp arg1,Exp arg2,String operador){
+    this.arg1 = arg1;
+    this.arg2 = arg2;
+    this.operador = operador;
+  }
+}
+class Fator extends Exp{}
+
+class FatorId extends Fator{
+
+  String id;
+  FatorId(String id){
+    this.id = id;
+  }
+}
+class FatorIdListaExp extends Fator{
+
+  String id;
+  ArrayList <Exp> exp;
+  FatorIdListaExp(String id,ArrayList <Exp> exp){
+
+    this.id = id;
+    this.exp = exp;
+  }
+}
+
+class FatorNumLiteral extends Fator{
+
+  String num_literal;
+  FatorNumLiteral(String num_literal){
+    this.num_literal = num_literal;
+  }
+}
+class FatorBool extends Fator{
+
+  String bool;
+  FatorBool(String bool){
+    this.bool = bool;
+  }
+}
+
+class Func{
+
+  String tipo;
+  String id;
+  ArrayList <VarDecl> vardecl;
+  ArrayList <Comandos> comandos;
+  ArrayList <ListaArg> args;
+  Func(String tipo, String id,ArrayList <VarDecl>vardecl,ArrayList <Comandos> comandos, ArrayList <ListaArg>args){
+    this.tipo = tipo;
+    this.id = id;
+    this.vardecl = vardecl;
+    this.comandos = comandos;
+    this.args = args;
+  }
+}
+
+class ListaArg{
+    String tipo;
+    String id;
+
+    ListaArg(String tipo, String id){
+        this.tipo = tipo;
+        this.id = id;
+    }
+}
+
+public class Karloff {
+
+  public static void main(String args[]) throws ParseException,IOException {
+    
+    //abrir o arquivo passado por linha
+    // de comando o código em Karloff
+    FileInputStream fs = new FileInputStream(new File(args[0]));
+
+    //Instanciar o parser da linguagem Karloff passando como argumento o arquivo contendo
+    // código karloff a ser processado
+    Karloff parser = new Karloff(fs);
+
+    //Chamar a primeira regra do parser que irá
+    //analisar o código e devolver a árvore sintática
+    ArvoreKarloff arvore = parser.Karloff();
+
+    //passar a ávore para o gerador de código
+    //que deve gerar um arquivo .java (ou outra linguagem) com o mesmo nome
+    //do arquivo de entrada
+    PrintStream out = new PrintStream(new File(args[1]+".c"));
+    System.setOut(out);
+    geracodigo(arvore);
+  }
+  public static void geracodigo(ArvoreKarloff arvore){
+    System.out.println("#include <stdio.h>");
+    System.out.println("#include <stdbool.h>");
+    for(Func f : arvore.funcoes){
+      printerFunc(f);
+    }
+    printerMain(arvore.main);
+  }
+  public static void printerMain(Main main){//revisado
+		System.out.print("int main()"); 
+		System.out.println("{ ");
+
+		for(VarDecl vardecl: main.vardecl){
+			printerVarDecl(vardecl);
+		}
+		printerSeqComandos(main.comandos);
+		
+    System.out.println("return 0;");
+		System.out.println("}");
+	}
+
+    public static void printerFunc(Func f){//revisado
+        int cont = 0;
+        System.out.print(f.tipo + " ");
+        System.out.print(f.id + " (");
+
+        for(ListaArg arg: f.args){
+            printerArgumentos(arg);
+            if((f.args).size() > 1 && cont < (f.args).size() - 1){
+                System.out.print(", ");
+            }
+            cont+=1;
+        } 
+
+        System.out.println("){");
+
+        for(VarDecl v : f.vardecl){ 
+            printerVarDecl(v);
+        }
+
+        for(Comandos c : f.comandos){
+            printerCmd(c);
+        }
+        System.out.println("}");
+    }
+
+    public static void printerArgumentos(ListaArg arg){//revisado
+        	System.out.print(arg.tipo + " ");
+		    System.out.print(arg.id);
+    }
+
+    public static void printerVarDecl(VarDecl v){
+        System.out.println(v.tipo +" "+ v.token_id +";");
+    }
+
+    public static void printerCmd(Comandos c){//revisado
+        
+        if (c instanceof CmdAttr){
+			printerCmdAtribuicao(c);
+		}
+        else if (c instanceof CmdListaExp){
+			printerCmdChamadaFuncao(c);
+		}
+		else if (c instanceof CmdCondicional){
+			printerCmdIf(c);
+		}
+		else if (c instanceof CmdWhile){
+			printerCmdWhile(c);
+		}
+		else if (c instanceof CmdRepeat){
+			printerRepeatUntil(c);
+		}
+		else if (c instanceof CmdReturn){
+			printerCmdReturn(c);
+		}
+		else if (c instanceof CmdOutput){
+			printerCmdPrint(c);
+		}
+    }
+
+    public static void printerCmdNR(Object e){//revisado
+        if(e instanceof Exp){
+            System.out.print("= ");
+            printerExp((Exp) e);
+            System.out.println(";");
+        }
+        else if (e instanceof ArrayList){
+          System.out.print(" (");
+          int tamanhoExp = ((ArrayList <Exp>)e).size(); 
+          int cont = 0;
+        
+          for (Exp expressao : ((ArrayList <Exp>)e)) {
+            printerExp(expressao);
+            if (tamanhoExp > 1 && cont < tamanhoExp -1){
+              System.out.print(", ");
+            }
+            cont+= 1;
+          }
+          System.out.print(")");
+          System.out.println(";");		
+		    } 
+    }
+    
+    public static void printerCmdAtribuicao(Comandos c){//revisado
+		System.out.print(((CmdAttr) c).id + " ");
+		printerCmdNR(((CmdAttr) c).exp );
+    }
+
+    public static void printerCmdChamadaFuncao(Comandos c){//revisado
+		System.out.print(((CmdListaExp) c).id + " ");
+		printerCmdNR(((CmdListaExp) c).exp);
+	}
+
+    public static void printerCmdIf(Comandos c){//revisado
+        System.out.print("if (");
+		printerExp(((CmdCondicional) c).exp);
+		System.out.print(") ");
+		System.out.println("{ ");
+		printerSeqComandos(((CmdCondicional) c).comandos); 
+		System.out.print("}");
+		System.out.println(";");
+    }
+
+    public static void printerCmdWhile(Comandos c){//revisado
+        System.out.print("while ");
+		System.out.print("(");
+		printerExp((((CmdWhile) c).exp));
+		System.out.print(") ");
+		System.out.println("{ ");
+		printerSeqComandos(((CmdWhile) c).comandos); 
+		System.out.print("}");
+		System.out.println(";");
+    }
+
+    public static void printerRepeatUntil(Comandos c){//revisado
+        System.out.println("do");
+		System.out.println("{ ");
+		printerSeqComandos(((CmdRepeat) c).comandos); 
+		System.out.print("}");
+		System.out.print("while");
+		System.out.print("(");
+		printerExp(((CmdRepeat) c).exp);
+		System.out.print(")");
+		System.out.println(";");
+    }
+
+    public static void printerCmdReturn(Comandos c){//revisado
+        System.out.print("return ");	
+		printerExp(((CmdReturn) c).exp);
+		System.out.println(";");
+    }
+
+    public static void printerCmdPrint(Comandos c){//revisar 
+        System.out.print("printf(\"%d\\n\", ");
+		    printerExp(((CmdOutput) c).exp);
+		    System.out.println(");");
+
+    }
+
+    public static void printerSeqComandos(ArrayList <Comandos> comandos){//revisado
+		for (Comandos c : comandos) {
+			printerCmd(c);
+		}
+	}
+
+
+    public static void printerExp(Exp e){//revisado
+        if(e instanceof Fator){
+            printerFtr(e);
+        }
+        else{
+            printerExpOperador(e);
+        }
+    }
+
+    public static void printerFtr(Exp e){//revisado
+        if (e instanceof FatorIdListaExp){
+			printerFtrExpPar(e);
+		}
+		else if (e instanceof FatorNumLiteral){
+			printerFtrNumLiteral(e);
+		}
+		else if (e instanceof FatorBool){
+			printerFtrTipo(e);
+		}
+		else if (e instanceof FatorId){
+			printerFtrTokenId(e);
+		}
+    }
+
+    public static void printerFtrExpPar(Exp e){//revisado
+        System.out.print( ((FatorIdListaExp) e).id + "(");
+		
+		int tamanhoExp = (((FatorIdListaExp)e).exp).size(); 
+		int cont = 0;
+		
+		for (Exp e1 : ((FatorIdListaExp)e).exp){
+			printerFtr(e1);
+			if (tamanhoExp > 1 && cont < tamanhoExp-1){
+				System.out.print(", ");
+			}
+			cont+= 1;
+		}
+      System.out.print(")");
+    }
+
+    public static void printerFtrTokenId(Exp e){//revisado
+        System.out.print( ((FatorId) e).id + " ");
+    }
+
+    public static void printerFtrNumLiteral(Exp e){//revisado
+		System.out.print( ((FatorNumLiteral) e).num_literal);
+	}
+
+    public static void printerExpOperador(Exp e){ //revisado
+        System.out.print("(");
+	  	printerExp(((ExpOperador)e).arg1);
+	  	System.out.print(((ExpOperador) e).operador + " ");
+	  	printerExp(((ExpOperador)e).arg2);	
+	  	System.out.print(")");
+    }
+
+    public static void printerFtrTipo(Exp e){//revisado
+		System.out.print(((FatorBool) e).bool + " ");
+	}
+}
+
+PARSER_END(Karloff)
+
+SKIP:
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+}
+
+TOKEN:
+{
+  <MAIN: "main">
+| <NEWVAR: "newVar">
+| <IF: "if">
+| <THEN: "then">
+| <SOUT: "System.output">
+| <ACHAVES: "{">
+| <FCHAVES: "}">
+| <FUNC: "func">
+| <WHILE: "while">
+| <RETURN: "return">
+| <REPEAT: "repeat">
+| <UNTIL: "until">
+
+}
+
+TOKEN: {
+  <INT: "int">
+| <BOOL: "bool">
+| <VOID: "void">
+| <TRUE: "true">
+| <FALSE: "false">
+}
+
+TOKEN: {
+  <PV: ";">
+| <VIRG: ",">
+}
+
+TOKEN: {
+  <ATTR: "=">
+}
+
+TOKEN: {
+   <APAR: "(">
+ | <FPAR: ")">
+}
+
+TOKEN: {
+  <SUM: "+">
+| <SUB: "-">
+| <MULT: "*">
+| <DIV: "/">
+| <MAIOR: ">">
+| <MENOR: "<">
+| <IGUAL: "==">
+| <AND: "&">
+| <OR: "|">
+}
+
+TOKEN:
+{
+   <NUM: ((["0"-"9"])+("."(["0"-"9"])+)?("E"("+"|"-")?(["0"-"9"])+)?)>
+ | <ID: ["a"-"z","A"-"Z"] ( ["a"-"z","A"-"Z","0"-"9"] | ("_")(["a"-"z","A"-"Z","0"-"9"]))*>
+}
+
+String Tipo(): //verificado
+{Token t = null;}
+{
+  t =<INT>  {return t.image;}
+| t =<BOOL> {return t.image;}
+| t =<VOID> {return t.image;}
+}
+
+// KARLOFF -> MAIN FUNC?
+ArvoreKarloff Karloff (): //verificado
+{Main main; Func func; ArrayList <Func> funcoes = new ArrayList<Func>();}
+{
+  main = Main() (func = Func() {funcoes.add(func);})*
+  <EOF>
+  {return new ArvoreKarloff(main,funcoes);}
+}
+
+// MAIN -> "void" "main" "{" VARDECL SEQCOMANDOS "}"
+Main Main(): // talvez falta instanciar as arraylists
+{Comandos cmd;VarDecl dcl;ArrayList <VarDecl> decl = new ArrayList<VarDecl>(); ArrayList <Comandos> comandos = new ArrayList<Comandos>();}
+{
+  <VOID><MAIN><ACHAVES> (dcl = VarDecl() {decl.add(dcl);})* (cmd = Comando() {comandos.add(cmd);})* <FCHAVES>
+  // observe a chamada de VarDecl
+  // se é um fecho, VarDecl nao pode retornar arraylist
+  // deve retornar objeto e usar decl.add()
+  // acontece bastante esse tipo de coisa ao longo do codigo
+  // precisa revisar e definir um padrao
+  {return new Main(decl,comandos);}
+}
+
+//FUNC -> FUNC "func" TIPO TOKEN_id "(" LISTAARG? ")" "{" VARDECL SEQCOMANDOS "}"
+// | "func" TIPO TOKEN_id "(" LISTAARG? ")" "{" VARDECL SEQCOMANDOS "}"
+
+Func Func():
+{VarDecl dcl;Comandos cmd; String tipo; Token id=null; ArrayList <ListaArg> args = new ArrayList<ListaArg>(); ArrayList <VarDecl> decl = new ArrayList<VarDecl>(); ArrayList <Comandos> comandos = new ArrayList<Comandos>();}
+{
+  <FUNC> tipo = Tipo() id = <ID> <APAR> (args = ListaArg())? <FPAR> 
+  <ACHAVES> ( dcl = VarDecl() {decl.add(dcl);})* (cmd = Comando() {comandos.add(cmd);})* <FCHAVES>
+  {return (new Func(tipo,id.image, decl, comandos, args));} 
+}
+
+//LISTAARG -> TIPO TOKEN_id | LISTAARG "," TIPO TOKEN_id
+ArrayList <ListaArg> ListaArg():
+{ArrayList <ListaArg> arg = new ArrayList<ListaArg>();String tipo;Token id = null;}
+{
+  // precisa add cada variavel na lista depois da leitura de ID
+  // por exemplo, id = <ID> {arg.add(new ListaArg(tipo,id.image));} // Acho que arrumei
+  tipo = Tipo() id = <ID> {arg.add(new ListaArg(tipo,id.image));} (<VIRG> tipo = Tipo() id = <ID> {arg.add(new ListaArg(tipo,id.image));})*
+  // desse jeito so adiciona o ultimo argumento lido
+  {return(arg);}
+}
+
+//VARDECL -> VARDECL "newVar" TIPO TOKEN_id ";" | vazio
+VarDecl VarDecl():
+{VarDecl decl;String tipo;Token id = null;}
+{
+  // observe as chamadas de VarDecl
+  // se lá é um fecho, aqui nao precisa retornar lista // acho que arrumei
+  <NEWVAR> tipo = Tipo() id = <ID> <PV>
+  {return (decl = new VarDecl(tipo,id.image));}
+}
+
+String OP():
+{Token operador;}
+{
+
+  operador = <SUM> {return operador.image;}
+| operador = <SUB> {return operador.image;}
+| operador = <MULT> {return operador.image;}
+| operador = <DIV>  {return operador.image;}
+| operador = <MAIOR> {return operador.image;}
+| operador = <MENOR> {return operador.image;}
+| operador = <IGUAL> {return operador.image;}
+| operador = <AND>   {return operador.image;}
+| operador = <OR>    {return operador.image;}
+}
+
+Exp Exp():
+{Exp arg1; Exp arg2; String OP; Fator fator;}
+{
+  <APAR> arg1 = Exp() OP = OP() arg2 = Exp() <FPAR>
+  {return new ExpOperador(arg1,arg2,OP);}
+  |fator = Fator() {return fator;}
+}
+
+Fator Fator():
+{Token id=null; Token num=null; Token tipo=null; ArrayList<Exp> fator = new ArrayList<Exp>();}
+{
+  id = <ID> (<APAR> (fator = ListaExp())? <FPAR> )? 
+  {if(fator.isEmpty())return new FatorId(id.image);
+    else return new FatorIdListaExp(id.image,fator);}
+| num = <NUM> {return new FatorNumLiteral(num.image);}
+| tipo = <TRUE> {return new FatorBool(tipo.image);}
+| tipo = <FALSE> {return new FatorBool(tipo.image);}
+}
+
+ArrayList <Exp> ListaExp():
+{Exp exp;Exp exp1;ArrayList <Exp> lista = new ArrayList <Exp>();}
+{
+  exp = Exp() ( <VIRG> exp1 = Exp() {lista.add(exp1);})*
+  {lista.add(0,exp); return lista;}
+}
+
+ArrayList <Comandos> SeqComandos():
+{ArrayList <Comandos> comandos = new ArrayList <Comandos> (); Comandos cmd;}
+{
+  (cmd = Comando() {comandos.add(cmd);})* {return comandos;}
+}
+Comandos Comando():
+{Token id = null; Exp exp; Object comando2; ArrayList <Comandos> seqComandos; ArrayList<Exp> ListaExp;}
+// todo arraylist tem que inicializar com new arraylist
+{
+  ((id  = <ID>) comando2 = Comando2())
+  // nao devia ta usando Object e sim duas classes diferentes
+  // nos retornos de Comando2
+  { if(comando2 instanceof Exp)return new CmdAttr(id.image,((Exp) comando2));
+    else return new CmdListaExp(id.image,((ArrayList<Exp>) comando2)); }
+| <IF> <APAR> exp = Exp() <FPAR> <THEN> <ACHAVES> (seqComandos = SeqComandos()) <FCHAVES> <PV> //remover o fecho em secomandos ??
+// pode adicionar na lista por aqui mesmo, com seqComandos.add(Comando())
+// mas eu usei uma funcao diferente, tipo o teu ListaExp
+// (evitei recursao)
+  {return new CmdCondicional(exp,seqComandos);}
+
+| <WHILE> <APAR> (exp = Exp()) <FPAR> <ACHAVES> (seqComandos = SeqComandos()) <FCHAVES> <PV> //remover o fecho em secomandos ??
+  {return new CmdWhile(exp,seqComandos);}
+| <REPEAT> <ACHAVES> (seqComandos = SeqComandos()) <FCHAVES> <UNTIL> <APAR> exp = Exp() <FPAR> <PV>
+  {return new CmdRepeat(exp,seqComandos);}
+| <RETURN> exp = Exp() <PV>
+  {return new CmdReturn(exp);}
+| <SOUT> <APAR> exp = Exp() <FPAR> <PV>
+  {return new CmdOutput(exp);}
+}
+
+Object Comando2():
+{Object comando;}
+{
+  <ATTR> comando = Exp() <PV> {return comando;}
+| <APAR> comando = ListaExp() <FPAR> <PV> {return comando;}
+}
